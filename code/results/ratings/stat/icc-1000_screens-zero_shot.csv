@@ -1,0 +1,4 @@
+Model,Stat,aesthetics_rating,learnability,efficiency,usability_rating,design_quality_rating
+Claude-4,ICC3,0.111,0.059,0.019,0.033,0.113
+GPT-5,ICC3,0.177,0.072,0.054,0.059,0.16
+Gemini-2.5,ICC3,0.137,0.062,0.026,0.059,0.125

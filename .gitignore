@@ -1,0 +1,8 @@
+*.jsonl
+*.json
+*.jpg
+*.png
+*/__pycache__/
+*.parquet
+code/analysis/irrCAC/
+*.pyc
