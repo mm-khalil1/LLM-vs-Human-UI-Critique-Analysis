@@ -14,7 +14,7 @@ DEFAULT_EMBEDDING_MODEL_NAME = "all-mpnet-base-v2"
 DEFAULT_REVIEW_MODEL = "gpt-5-mini"
 DEFAULT_REVIEW_SCHEMA_NAME = "semantic_comment_relationship_judgment"
 DEFAULT_REVIEW_SYSTEM_PROMPT = (
-    "You judge the relationship between two UI critique comments written about the same screen. "
+    "You judge the relationship between two UI critique comments written about the same task. "
     "The comments may be exact paraphrases, one may fully contain the other plus extra detail, "
     "they may partially overlap, or they may be different. "
     "Be conservative about merging and return valid JSON only."
@@ -34,15 +34,24 @@ DEFAULT_ACTION_OPTIONS = [
 ]
 STANDARD_COMMENT_CORE_COLUMNS = [
     "comment_id",
-    "source_type",
     "screen_id",
+    "app_category",
     "screen_task_id",
     "task",
-    "app_category",
-    "observed_issue",
+    "source_type",
     "expected_standard",
+    "observed_issue",
     "suggested_fix",
 ]
+STANDARD_OPTIONAL_COLUMN_ORDER = [
+    "missing_parts",
+    "guideline_reference",
+    "model_name",
+    "bounding_box",
+    "raw_text",
+]
+DEFAULT_LEFT_COMMENT_COL = "left_observed_issue"
+DEFAULT_RIGHT_COMMENT_COL = "right_observed_issue"
 
 
 def load_embedding_model(model_name: str = DEFAULT_EMBEDDING_MODEL_NAME) -> SentenceTransformer:
@@ -215,40 +224,11 @@ def standardize_comment_table(
             standardized_df[new_col] = df[old_col] if old_col in df.columns else pd.NA
 
     core_plus = STANDARD_COMMENT_CORE_COLUMNS + ["match_text"]
-    extra_cols = [c for c in standardized_df.columns if c not in core_plus]
-    return standardized_df[core_plus + extra_cols].copy()
-
-
-def build_within_screen_candidate_pairs(
-    left_df: pd.DataFrame,
-    right_df: pd.DataFrame,
-    *,
-    screen_id_col: str,
-    left_columns: list[str],
-    right_columns: list[str],
-    left_suffix: str = "_left",
-    right_suffix: str = "_right",
-    pair_id_prefix: Optional[str] = None,
-    pair_id_col: str = "pair_id",
-) -> pd.DataFrame:
-    left_base_df = left_df[left_columns].copy()
-    right_base_df = right_df[right_columns].copy()
-
-    merged_df = left_base_df.merge(
-        right_base_df,
-        on=screen_id_col,
-        how="inner",
-        suffixes=(left_suffix, right_suffix),
-    )
-
-    if pair_id_prefix is not None:
-        merged_df.insert(
-            0,
-            pair_id_col,
-            [f"{pair_id_prefix}_{i+1:07d}" for i in range(len(merged_df))],
-        )
-
-    return merged_df
+    ordered_optional_cols = [
+        col for col in STANDARD_OPTIONAL_COLUMN_ORDER if col in standardized_df.columns and col not in core_plus
+    ]
+    extra_cols = [c for c in standardized_df.columns if c not in core_plus + ordered_optional_cols]
+    return standardized_df[core_plus + ordered_optional_cols + extra_cols].copy()
 
 
 def build_standardized_pairs(
@@ -257,6 +237,7 @@ def build_standardized_pairs(
     *,
     pair_id_prefix: str = "PAIR",
     exclude_same_comment_id_pairs: bool = False,
+    group_col: str = "screen_task_id",
 ) -> pd.DataFrame:
     left_core_cols = [
         "comment_id",
@@ -274,15 +255,45 @@ def build_standardized_pairs(
     left_extra_cols = [c for c in left_comments_df.columns if c not in left_core_cols + ["app_category"]]
     right_extra_cols = [c for c in right_comments_df.columns if c not in right_core_cols + ["app_category"]]
 
-    left_base_df = left_comments_df[["screen_id", "app_category"] + [c for c in left_core_cols if c != "screen_id"] + left_extra_cols].copy()
+    join_base_cols = [group_col]
+    if group_col != "screen_id":
+        join_base_cols.append("screen_id")
+    if group_col != "screen_task_id":
+        join_base_cols.append("screen_task_id")
+
+    left_base_df = left_comments_df[
+        join_base_cols + ["app_category"] + [c for c in left_core_cols if c not in join_base_cols] + left_extra_cols
+    ].copy()
     right_base_df = right_comments_df[right_core_cols + right_extra_cols].copy()
 
     pairs_df = left_base_df.merge(
         right_base_df,
-        on="screen_id",
+        on=group_col,
         how="inner",
         suffixes=("_left", "_right"),
     )
+
+    if group_col == "screen_task_id":
+        if "screen_id_left" in pairs_df.columns and "screen_id_right" in pairs_df.columns:
+            mismatched_screen_ids = pairs_df["screen_id_left"] != pairs_df["screen_id_right"]
+            if mismatched_screen_ids.any():
+                raise ValueError("Found mismatched screen_id values inside a screen_task_id pair group.")
+            pairs_df["screen_id"] = pairs_df["screen_id_left"]
+            pairs_df = pairs_df.drop(columns=["screen_id_left", "screen_id_right"])
+    elif group_col == "screen_id":
+        pairs_df["screen_id"] = pairs_df[group_col]
+    else:
+        if "screen_id_left" in pairs_df.columns and "screen_id_right" in pairs_df.columns:
+            mismatched_screen_ids = pairs_df["screen_id_left"] != pairs_df["screen_id_right"]
+            if mismatched_screen_ids.any():
+                raise ValueError("Found mismatched screen_id values inside a pair group.")
+            pairs_df["screen_id"] = pairs_df["screen_id_left"]
+            pairs_df = pairs_df.drop(columns=["screen_id_left", "screen_id_right"])
+
+        if "screen_task_id_left" in pairs_df.columns and "screen_task_id_right" in pairs_df.columns:
+            mismatched_task_ids = pairs_df["screen_task_id_left"] != pairs_df["screen_task_id_right"]
+            if mismatched_task_ids.any():
+                raise ValueError("Found mismatched screen_task_id values inside a pair group.")
 
     if exclude_same_comment_id_pairs:
         pairs_df = pairs_df[pairs_df["comment_id_left"] != pairs_df["comment_id_right"]].copy()
@@ -351,11 +362,11 @@ def build_standard_preview_df(
     limit: int = 10,
     sort_cols: Optional[list[str]] = None,
     ascending: Optional[list[bool]] = None,
+    
 ) -> pd.DataFrame:
     preview_cols = [
         "screen_id",
-        "left_screen_task_id",
-        "right_screen_task_id",
+        "screen_task_id",
         "left_observed_issue",
         "right_observed_issue",
     ]
@@ -370,6 +381,7 @@ def build_standard_preview_df(
             ascending=ascending if ascending is not None else True,
             kind="stable",
         )
+    
     return preview_df.head(limit)
 
 
@@ -380,47 +392,6 @@ def cosine_similarity(vec_a: object, vec_b: object) -> float:
     if denom == 0:
         return np.nan
     return float(np.dot(a, b) / denom)
-
-
-def score_candidate_pairs(
-    candidate_pairs_df: pd.DataFrame,
-    embeddings_df: pd.DataFrame,
-    *,
-    left_id_col: str,
-    right_id_col: str,
-    embedding_id_col: str,
-    left_embedding_col: str = "left_embedding",
-    right_embedding_col: str = "right_embedding",
-    score_col: str = "cosine_similarity",
-) -> pd.DataFrame:
-    scored_df = candidate_pairs_df.copy()
-
-    scored_df = scored_df.merge(
-        embeddings_df.rename(
-            columns={
-                embedding_id_col: left_id_col,
-                "embedding": left_embedding_col,
-            }
-        ),
-        on=left_id_col,
-        how="left",
-    )
-    scored_df = scored_df.merge(
-        embeddings_df.rename(
-            columns={
-                embedding_id_col: right_id_col,
-                "embedding": right_embedding_col,
-            }
-        ),
-        on=right_id_col,
-        how="left",
-    )
-
-    scored_df[score_col] = scored_df.apply(
-        lambda row: cosine_similarity(row[left_embedding_col], row[right_embedding_col]),
-        axis=1,
-    )
-    return scored_df
 
 
 def select_similarity_band(
@@ -487,27 +458,30 @@ def build_semantic_review_user_prompt(
     row: pd.Series,
     *,
     screen_id_col: str,
-    left_text_col: str,
-    right_text_col: str,
+    left_comment_col: str = DEFAULT_LEFT_COMMENT_COL,
+    right_comment_col: str = DEFAULT_RIGHT_COMMENT_COL,
+    screen_task_id_col: Optional[str] = None,
     left_screen_task_id_col: Optional[str] = None,
     right_screen_task_id_col: Optional[str] = None,
     left_source_col: Optional[str] = None,
     right_source_col: Optional[str] = None,
 ) -> str:
-    lines = [f"Screen ID: {row[screen_id_col]}", "", "Comment A"]
+    lines = []
+
+    lines.append("Comment A")
 
     if left_source_col:
         lines.append(f"- source: {row[left_source_col]}")
-    if left_screen_task_id_col:
+    if left_screen_task_id_col and not screen_task_id_col:
         lines.append(f"- screen_task_id: {row[left_screen_task_id_col]}")
-    lines.append(f"- observed_issue: {row[left_text_col]}")
+    lines.append(f"- observed_issue: {row[left_comment_col]}")
 
     lines.extend(["", "Comment B"])
     if right_source_col:
         lines.append(f"- source: {row[right_source_col]}")
-    if right_screen_task_id_col:
+    if right_screen_task_id_col and not screen_task_id_col:
         lines.append(f"- screen_task_id: {row[right_screen_task_id_col]}")
-    lines.append(f"- observed_issue: {row[right_text_col]}")
+    lines.append(f"- observed_issue: {row[right_comment_col]}")
 
     lines.extend(
         [
@@ -525,6 +499,8 @@ def build_semantic_review_user_prompt(
             "- keep_both",
             "- manual_review",
             "",
+            "Then provide a confidence number between 0 and 1",
+            "",
             'Return JSON with exactly these keys:',
             '{"relationship": string, "recommended_action": string, "confidence": number}',
         ]
@@ -537,8 +513,9 @@ def build_semantic_review_request(
     *,
     custom_id: str,
     screen_id_col: str,
-    left_text_col: str,
-    right_text_col: str,
+    left_comment_col: str = DEFAULT_LEFT_COMMENT_COL,
+    right_comment_col: str = DEFAULT_RIGHT_COMMENT_COL,
+    screen_task_id_col: Optional[str] = None,
     left_screen_task_id_col: Optional[str] = None,
     right_screen_task_id_col: Optional[str] = None,
     left_source_col: Optional[str] = None,
@@ -550,8 +527,9 @@ def build_semantic_review_request(
     user_prompt = build_semantic_review_user_prompt(
         row,
         screen_id_col=screen_id_col,
-        left_text_col=left_text_col,
-        right_text_col=right_text_col,
+        left_comment_col=left_comment_col,
+        right_comment_col=right_comment_col,
+        screen_task_id_col=screen_task_id_col,
         left_screen_task_id_col=left_screen_task_id_col,
         right_screen_task_id_col=right_screen_task_id_col,
         left_source_col=left_source_col,
@@ -584,8 +562,9 @@ def build_semantic_review_requests(
     left_id_col: str,
     right_id_col: str,
     screen_id_col: str,
-    left_text_col: str,
-    right_text_col: str,
+    left_comment_col: str = DEFAULT_LEFT_COMMENT_COL,
+    right_comment_col: str = DEFAULT_RIGHT_COMMENT_COL,
+    screen_task_id_col: Optional[str] = None,
     left_screen_task_id_col: Optional[str] = None,
     right_screen_task_id_col: Optional[str] = None,
     left_source_col: Optional[str] = None,
@@ -606,8 +585,9 @@ def build_semantic_review_requests(
                 row,
                 custom_id=custom_id,
                 screen_id_col=screen_id_col,
-                left_text_col=left_text_col,
-                right_text_col=right_text_col,
+                left_comment_col=left_comment_col,
+                right_comment_col=right_comment_col,
+                screen_task_id_col=screen_task_id_col,
                 left_screen_task_id_col=left_screen_task_id_col,
                 right_screen_task_id_col=right_screen_task_id_col,
                 left_source_col=left_source_col,
@@ -635,8 +615,9 @@ def prepare_review_chunks(
     left_id_col: str,
     right_id_col: str,
     screen_id_col: str,
-    left_text_col: str,
-    right_text_col: str,
+    left_comment_col: str = DEFAULT_LEFT_COMMENT_COL,
+    right_comment_col: str = DEFAULT_RIGHT_COMMENT_COL,
+    screen_task_id_col: Optional[str] = None,
     left_screen_task_id_col: Optional[str] = None,
     right_screen_task_id_col: Optional[str] = None,
     left_source_col: Optional[str] = None,
@@ -652,8 +633,9 @@ def prepare_review_chunks(
         left_id_col=left_id_col,
         right_id_col=right_id_col,
         screen_id_col=screen_id_col,
-        left_text_col=left_text_col,
-        right_text_col=right_text_col,
+        left_comment_col=left_comment_col,
+        right_comment_col=right_comment_col,
+        screen_task_id_col=screen_task_id_col,
         left_screen_task_id_col=left_screen_task_id_col,
         right_screen_task_id_col=right_screen_task_id_col,
         left_source_col=left_source_col,
@@ -701,6 +683,15 @@ def parse_semantic_review_results_jsonl(
     right_id_col: str,
     include_candidate_columns: Optional[list[str]] = None,
 ) -> pd.DataFrame:
+    def _resolve_candidate_value(pair_row: pd.Series, col: str):
+        if col in pair_row.index:
+            return pair_row.get(col)
+        if col == "task":
+            left_task = pair_row.get("left_task")
+            right_task = pair_row.get("right_task")
+            return left_task if pd.notna(left_task) else right_task
+        return None
+
     results_path = Path(results_path)
     candidate_lookup = candidate_df.copy()
 
@@ -733,23 +724,7 @@ def parse_semantic_review_results_jsonl(
 
             if pair_row is not None and include_candidate_columns:
                 for col in include_candidate_columns:
-                    row_data[col] = pair_row.get(col)
-
-            # Standardize the manual-review display contract around generic text fields.
-            # This keeps the review UI agnostic to whether the compared text came from
-            # observed_issue only or a broader composite text field.
-            if "left_text" not in row_data or pd.isna(row_data.get("left_text")):
-                row_data["left_text"] = (
-                    row_data.get("left_observed_issue")
-                    if "left_observed_issue" in row_data
-                    else pair_row.get("left_text") if pair_row is not None else None
-                )
-            if "right_text" not in row_data or pd.isna(row_data.get("right_text")):
-                row_data["right_text"] = (
-                    row_data.get("right_observed_issue")
-                    if "right_observed_issue" in row_data
-                    else pair_row.get("right_text") if pair_row is not None else None
-                )
+                    row_data[col] = _resolve_candidate_value(pair_row, col)
 
             result_rows.append(row_data)
 
@@ -774,8 +749,10 @@ def inspect_manual_review_rows(
     review_needed_df: pd.DataFrame,
     *,
     start: int = 0,
-    left_text_col: str = "left_text",
-    right_text_col: str = "right_text",
+    left_comment_col: str = DEFAULT_LEFT_COMMENT_COL,
+    right_comment_col: str = DEFAULT_RIGHT_COMMENT_COL,
+    task_col: str = "screen_task_id",
+    task_name_col: str = "task",
     left_task_col: str = "left_screen_task_id",
     right_task_col: str = "right_screen_task_id",
     relationship_col: str = "relationship",
@@ -811,22 +788,21 @@ Commands:
         print("\n" + "=" * 110)
         print(f"{i+1}/{n} | row_index={row_idx} | confidence={row.get(confidence_col)}")
         print("-" * 110)
-        print("left_screen_task_id :", row.get(left_task_col))
-        print("right_screen_task_id:", row.get(right_task_col))
+        if task_col in row.index:
+            print("screen_task_id      :", row.get(task_col))
+            if task_name_col in row.index:
+                print("task                :", row.get(task_name_col))
+        else:
+            print("left_screen_task_id :", row.get(left_task_col))
+            print("right_screen_task_id:", row.get(right_task_col))
         print("relationship       :", row.get(relationship_col))
         print("recommended_action :", row.get(action_col))
         print("-" * 110)
         print("LEFT TEXT:")
-        left_text = row.get(left_text_col)
-        if left_text is None and left_text_col == "left_text":
-            left_text = row.get("left_observed_issue")
-        print(left_text)
+        print(row.get(left_comment_col))
         print("-" * 110)
         print("RIGHT TEXT:")
-        right_text = row.get(right_text_col)
-        if right_text is None and right_text_col == "right_text":
-            right_text = row.get("right_observed_issue")
-        print(right_text)
+        print(row.get(right_comment_col))
         print("-" * 110)
         print("Current final decision:", decisions.get(row_idx))
 

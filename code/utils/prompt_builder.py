@@ -186,16 +186,3 @@ Return exactly this JSON structure with no extra text:
     }
   ]
 }"""
-# Also, provide numerical ratings for:
-#     - aesthetics (1–10)
-#     - learnability (1–5)
-#     - efficiency (1–5)
-#     - overall_quality (1–10)
-
-# ,
-#   "ratings": {{
-#     "aesthetics": X,
-#     "learnability": Y,
-#     "efficiency": Y,
-#     "overall_quality": Z
-#   }}

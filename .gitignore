@@ -3,6 +3,7 @@
 *.jpg
 *.png
 */__pycache__/
+data/dataset/original_dataset/
 *.parquet
 code/analysis/irrCAC/
 *.pyc
