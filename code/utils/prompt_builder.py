@@ -1,6 +1,8 @@
 import pandas as pd
 from typing import List, Dict, Union
 
+from utils.inference_utils import GUIDELINES
+
 # -------------------- Constants --------------------
 ALLOWED_ASPECTS = {"aesthetics_rating", "usability_rating", "design_quality_rating"}
 
@@ -8,7 +10,7 @@ SCREEN_TASK_PREFIX = "Screen Task: "
 RETURN_PREFIX = "Return ONLY the specified JSON object with no additional text, code fences, or commentary.\n"
 
 FEWSHOT_INTRO = (
-    "First, you are given three example images (Image 1-3) with their tasks and expert ratings, "
+    "First, you are given three example images (Image 1–3) with their tasks and expert ratings, "
     "followed by a target image (Image 4) to evaluate, in that order."
 )
 
@@ -152,7 +154,63 @@ def build_rating_prompt(task, guidelines, evaluation_aspect, prompting_type, sam
 
     raise ValueError("prompting_type must be 'zero_shot' or 'few_shot'.")
 
+# --------------------- Critique Prompt --------------------
+# Critique prompt versions, oldest first. Each version is kept verbatim because runs are reproduced
+# from the exact text that was sent:
+# - p1: OpenAI gpt5 runs. Single guideline_reference string; guidelines listed in GUIDELINES_P1 order.
+# - p2: Claude claude4_7 run (also the old Gemini run). guideline_references list with source/category/evidence.
+# - p3: Gemini gemini3_1pro run. Adds target_element and depends_on_unseen_interaction, drops evidence.
+
+
 def build_critique_prompt(task, guidelines, prompting_type='zero_shot', evaluation_aspect=None, samples_df=None):
+    return f"""You are evaluating the attached mobile app screen in the context of the following task:
+{task}
+
+Identify all distinct, task-relevant usability or visual design issues that may hinder successful task completion.
+Each issue must be concrete, non-overlapping, and grounded in the provided guidelines.
+
+Guidelines to reference:
+{guidelines}
+
+For every issue, provide:
+- target_element: A brief description of the specific UI element containing the issue.
+- expected_standard: What good design should look like.
+- observed_issue: What is wrong in the current screen.
+- depends_on_unseen_interaction: true if this critique assumes how a control behaves when used, false if the issue is purely visual and static.
+- suggested_fix: A clear, actionable improvement.
+- guideline_references: A list of violated guidelines, where each guideline has:
+  - source: one of ["Nielsen", "Apple HIG", "CrowdCrit"]
+  - category: the heuristic, HIG section/subsection, or critique theme
+
+Rules:
+- Focus on one clear problem per critique.
+- No praise, summaries, or overall ratings.
+- Do not repeat the same issue in different wording.
+- Do not invent issues when none exist.
+- If multiple guidelines apply, add multiple objects in guideline_references.
+
+Return exactly this JSON structure with no extra text:
+
+"""+"""{
+  "critiques": [
+    {
+      "target_element": "...",
+      "expected_standard": "...",
+      "observed_issue": "...",
+      "depends_on_unseen_interaction": <boolean>,
+      "suggested_fix": "...",
+      "guideline_references": [
+        {
+          "source": "...",
+          "category": "...",
+        }
+      ]
+    }
+  ]
+}"""
+
+
+def build_critique_prompt_p1(task, guidelines, prompting_type='zero_shot', evaluation_aspect=None, samples_df=None):
     return f"""You are evaluating a mobile app screen in the context of the following task:
 {task}
 
@@ -186,3 +244,64 @@ Return exactly this JSON structure with no extra text:
     }
   ]
 }"""
+
+
+def build_critique_prompt_p2(task, guidelines, prompting_type='zero_shot', evaluation_aspect=None, samples_df=None):
+    return f"""You are evaluating the attached mobile app screen in the context of the following task:
+{task}
+
+Identify all distinct, task-relevant usability or visual design issues that may hinder successful task completion.
+Each issue must be concrete, non-overlapping, and grounded in the provided guidelines.
+
+Guidelines to reference:
+{guidelines}
+
+For every issue, provide:
+- expected_standard: What good design should look like.
+- observed_issue: What is wrong in the current screen.
+- suggested_fix: A clear, actionable improvement.
+- guideline_references: A list of violated guidelines, where each guideline has:
+  - source: one of ["Nielsen", "Apple HIG", "CrowdCrit"]
+  - category: the heuristic, HIG section/subsection, or critique theme
+  - evidence: short explanation of why this reference applies to the observed issue
+
+Rules:
+- Focus on one clear problem per critique.
+- No praise, summaries, or overall ratings.
+- Do not repeat the same issue in different wording.
+- Do not invent issues when none exist.
+- If multiple guidelines apply, add multiple objects in guideline_references.
+
+Return exactly this JSON structure with no extra text:
+
+"""+"""{
+  "critiques": [
+    {
+      "expected_standard": "...",
+      "observed_issue": "...",
+      "suggested_fix": "...",
+      "guideline_references": [
+        {
+          "source": "...",
+          "category": "...",
+          "evidence": "..."
+        }
+      ]
+    }
+  ]
+}"""
+
+
+GUIDELINES_P1 = "Nielsen Norman 10 Usability Heuristics, CrowdCrit Visual Design Critiques, and Apple Human Interface Guidelines"
+
+# Rating prompt versions:
+# - r1: the ratings runs; matches the requests of the gemini2_5pro and gpt5 few-shot batches exactly.
+RATING_PROMPTS = {
+    "r1": {"build_prompt_fn": build_rating_prompt, "guidelines": GUIDELINES_P1},
+}
+
+CRITIQUE_PROMPTS = {
+    "p1": {"build_prompt_fn": build_critique_prompt_p1, "guidelines": GUIDELINES_P1},
+    "p2": {"build_prompt_fn": build_critique_prompt_p2, "guidelines": GUIDELINES},
+    "p3": {"build_prompt_fn": build_critique_prompt, "guidelines": GUIDELINES},
+}

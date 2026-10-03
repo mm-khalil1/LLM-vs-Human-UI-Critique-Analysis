@@ -1,9 +1,16 @@
 from pathlib import Path
 import pandas as pd
 from typing import Union
-from .llm_evaluation_utils import EVALUATION_FIVE_ASPECTS
+from .inference_utils import EVALUATION_FIVE_ASPECTS
 
 VALID_TASK_SUBSETS = {"all_tasks", "1000_tasks", "50_tasks"}
+
+# Anchor all paths to the repository root rather than the working directory,
+# so helpers resolve identically no matter which notebook imports them.
+# code/utils/data_setup.py -> parents[2] == repository root
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DATA_DIR = PROJECT_ROOT / "data"
+RESULTS_DIR = PROJECT_ROOT / "code" / "results"
 
 
 def normalize_task_subset(task_subset: str) -> str:
@@ -55,18 +62,16 @@ def initialize_responses_df(uicrit_file: Union[str, Path], num_trials: int, stag
         raise ValueError(f"Unknown stage: {stage!r}")
 
 def get_dataset_file_path(stage: str) -> Path:
-    DATA_DIR = Path("../../../data")
-
     if stage not in {"ratings", "critiques"}:
         raise ValueError(f"Unknown stage: {stage!r}")
     
-    uicrit_data_file = DATA_DIR / "dataset/cleaned_dataset/uicrit_notna_deduped.parquet"
+    uicrit_data_file = DATA_DIR / "dataset/cleaned_dataset/uicrit_notna.parquet"
     if stage == "ratings":
         few_shot_samples_file = DATA_DIR / "few_shot_samples/few_shot_samples_df.parquet"
     elif stage == "critiques":
         few_shot_samples_file = None  # not used in critiques stage
 
-    base64_screens_file = DATA_DIR / "dataset/cleaned_dataset/base64_screens.parquet"
+    base64_screens_file = DATA_DIR / "dataset/cleaned_dataset/screenshots.parquet"
 
     return uicrit_data_file, base64_screens_file, few_shot_samples_file
 
@@ -97,7 +102,7 @@ def prepare_project_data(model_short: str, num_trials: int, shots: str, stage: s
 
     # Outputs
     base_name = f"{stage}-{shots}-{task_subset}-{model_short}-responses"
-    all_results_dir = Path(f"../../results/{stage}")
+    all_results_dir = RESULTS_DIR / stage
     all_results_dir.mkdir(parents=True, exist_ok=True)
     text_responses_jsonl_file = all_results_dir / "jsonl" / f"{base_name}.jsonl"
     model_results_file        = all_results_dir / "parquet" / f"{base_name}.parquet"

@@ -1,0 +1,60 @@
+# LLM-vs-Human-UI-Critique-Analysis - Python dependencies
+# Developed and tested on Python 3.12.3
+#
+#   python -m venv .venv
+#   source .venv/bin/activate
+#   pip install -r requirements.txt
+
+# --- Data handling -------------------------------------------------
+pandas==3.0.2
+polars==1.40.1
+numpy==2.4.4
+pyarrow==24.0.0          # parquet engine used throughout
+
+# --- LLM provider SDKs ---------------------------------------------
+openai==2.33.0
+anthropic==0.97.0
+google-genai==1.73.1
+python-dotenv==1.2.2     # loads API keys from a local .env
+
+# --- NLP / matching models -----------------------------------------
+# torch is pinned to the base version; the environment this was run in
+# used the CUDA 12.4 build (torch==2.6.0+cu124). For GPU support install
+# it first from the PyTorch index, then run this file:
+#   pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124
+torch==2.6.0
+transformers==5.7.0
+sentence-transformers==5.4.1
+bert-score==0.3.13
+rouge_score==0.1.2
+nltk==3.9.4
+
+# --- Statistics ----------------------------------------------------
+scipy==1.17.1
+scikit-learn==1.8.0
+statsmodels==0.14.6
+pingouin==0.6.1
+
+# --- Plotting / notebooks ------------------------------------------
+matplotlib==3.10.9
+seaborn==0.13.2
+pillow==12.2.0
+opencv-python==4.13.0.92
+ipython==9.13.0
+ipykernel==7.2.0
+
+# --- Installed separately ------------------------------------------
+# irrCAC (inter-rater agreement, used by ratings_results_analysis.ipynb)
+# declares scipy==1.12.0 and pandas<3.0.0, which conflict with the pins
+# above and make a combined install fail to resolve. The pins are
+# over-strict: 0.4.4 was verified working against numpy 2.4.4,
+# pandas 3.0.2 and scipy 1.17.1. Install it without its dependencies:
+#
+#   pip install --no-deps irrCAC==0.4.4
+#
+# --- Legacy (Stage 1 rating pipeline only) -------------------------
+# Deprecated SDK, needed only by
+# code/experiment_notebooks/Legacy-Stage_1-LLM_Ratings/Gemini_Rating_Pipeline/
+# Install separately if you need to re-run that notebook; it pins an
+# older protobuf and can conflict with google-genai.
+# google-generativeai==0.8.6

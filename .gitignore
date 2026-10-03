@@ -1,9 +1,45 @@
-*.jsonl
-*.json
-*.jpg
-*.png
-*/__pycache__/
-data/dataset/original_dataset/
-*.parquet
+# ---------------------------------------------------------------
+# Publish source code only.
+# Strategy: ignore everything, then re-include the file types we
+# publish. Anything new (results, data, batch files, exports) is
+# excluded by default and cannot be committed by accident.
+# ---------------------------------------------------------------
+
+# 1. Ignore every file...
+*
+
+# 2. ...but descend into directories so the rules below can match.
+!*/
+
+# 3. Re-include source and project files.
+!*.py
+!*.ipynb
+!README.md
+!LICENSE
+!requirements.txt
+!.gitignore
+!.env.example
+
+# 4. Never descend into these at all.
+#    (Listed last so they override rule 2. Also keeps `git status`
+#     fast by skipping the 80k+ files under the datasets.)
+.venv/
+.cache/
+.claude/
+.codex/
+.agents/
+__pycache__/
+
+# Vendored third-party library - install from PyPI instead
 code/analysis/irrCAC/
-*.pyc
+
+# Generated outputs and raw data - not published
+code/results/
+code/analysis/manual_review/
+data/dataset/original_dataset/
+data/dataset/cleaned_dataset/
+data/few_shot_samples/
+
+# Batch request/response payloads produced by the inference notebooks
+*_Batching/
+Batch_Files-*/
