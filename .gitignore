@@ -29,15 +29,13 @@
 .codex/
 .agents/
 __pycache__/
-
-# Vendored third-party library - install from PyPI instead
-code/analysis/irrCAC/
+# Leftover pre-restructure folder (old vendored irrCAC - install from PyPI instead)
+code/
 
 # Generated outputs and data - not published
 results/*
 data/raw/
 data/processed/*/*
-data/schedules/
 
 # 5. Exceptions: irreplaceable human input - manual LLM-judge relation labels, plus the
 #    qualitative review verdicts and the frozen samples they point into (by sample_index).
@@ -52,6 +50,7 @@ results/critiques/analysis/tables/*
 results/critiques/analysis/tables/qualitative_examples/*
 !results/critiques/analysis/tables/qualitative_examples/pair_review_labels.csv
 !results/critiques/analysis/tables/qualitative_examples/*_review_sample.csv
+!results/critiques/analysis/tables/qualitative_examples/sampling.json
 !results/critiques/matching/
 results/critiques/matching/*
 !results/critiques/matching/*/
@@ -69,3 +68,7 @@ results/critiques/matching/*/zero_shot-all_tasks/llmjudge_matching/*
 data/processed/3_human_reference/deduplicating_semantic_human_critiques/*
 !data/processed/3_human_reference/deduplicating_semantic_human_critiques/semantic_manual_decisions.csv
 !notebooks/3_analysis/qualitative_codebook.yaml
+
+# 7. Exception: batch schedules - which screens/tasks went to which model, and the
+#    few-shot examples. Small experiment inputs, kept for reproducibility.
+!data/schedules/*.parquet

@@ -1,0 +1,32 @@
+{
+  "matched": {
+    "population": {
+      "claude4_7": 945,
+      "gpt5": 885,
+      "gemini3_1pro": 1133
+    },
+    "sample_per_model": 50,
+    "seed": 42,
+    "stratified_by": "app_category"
+  },
+  "unmatched": {
+    "population": {
+      "claude4_7": 7623,
+      "gpt5": 7850,
+      "gemini3_1pro": 8274
+    },
+    "sample_per_model": 50,
+    "seed": 42,
+    "stratified_by": "app_category"
+  },
+  "unsupported": {
+    "population": {
+      "claude4_7": 8714,
+      "gpt5": 7369,
+      "gemini3_1pro": 3542
+    },
+    "sample_per_model": 50,
+    "seed": 42,
+    "stratified_by": "app_category"
+  }
+}
