@@ -33,13 +33,39 @@ __pycache__/
 # Vendored third-party library - install from PyPI instead
 code/analysis/irrCAC/
 
-# Generated outputs and raw data - not published
-code/results/
-code/analysis/manual_review/
-data/dataset/original_dataset/
-data/dataset/cleaned_dataset/
-data/few_shot_samples/
+# Generated outputs and data - not published
+results/*
+data/raw/
+data/processed/*/*
+data/schedules/
 
-# Batch request/response payloads produced by the inference notebooks
-*_Batching/
-Batch_Files-*/
+# 5. Exceptions: irreplaceable human input - manual LLM-judge relation labels, plus the
+#    qualitative review verdicts and the frozen samples they point into (by sample_index).
+#    Each parent folder is re-included and its other contents ignored again.
+!results/critiques/
+results/critiques/*
+!results/critiques/analysis/
+results/critiques/analysis/*
+!results/critiques/analysis/tables/
+results/critiques/analysis/tables/*
+!results/critiques/analysis/tables/qualitative_examples/
+results/critiques/analysis/tables/qualitative_examples/*
+!results/critiques/analysis/tables/qualitative_examples/pair_review_labels.csv
+!results/critiques/analysis/tables/qualitative_examples/*_review_sample.csv
+!results/critiques/matching/
+results/critiques/matching/*
+!results/critiques/matching/*/
+results/critiques/matching/*/*
+!results/critiques/matching/*/zero_shot-all_tasks/
+results/critiques/matching/*/zero_shot-all_tasks/*
+!results/critiques/matching/*/zero_shot-all_tasks/llmjudge_matching/
+results/critiques/matching/*/zero_shot-all_tasks/llmjudge_matching/*
+!results/critiques/matching/*/zero_shot-all_tasks/llmjudge_matching/llmjudge_manual_relation_overrides-*.csv
+
+# 6. Exception: hand-made parsing corrections and semantic-dedup decisions, plus the
+#    qualitative codebook used by the matching analysis.
+!data/processed/2_parsed/manual_comment_parsing_corrections.json
+!data/processed/3_human_reference/deduplicating_semantic_human_critiques/
+data/processed/3_human_reference/deduplicating_semantic_human_critiques/*
+!data/processed/3_human_reference/deduplicating_semantic_human_critiques/semantic_manual_decisions.csv
+!notebooks/3_analysis/qualitative_codebook.yaml

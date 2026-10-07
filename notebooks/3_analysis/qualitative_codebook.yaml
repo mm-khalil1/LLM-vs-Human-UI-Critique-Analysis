@@ -1,0 +1,76 @@
+# Codebook for the manual audits in 02_comment_matching_analysis.ipynb (section 4).
+#
+# Each section lists the fields coded for every sampled row and the allowed values of each field.
+# For fields marked "first that applies", go down the list and take the first value that fits.
+# Every row also gets a free-text `note` (what I see -> why these codes) and an optional
+# `exemplar` flag for rows worth quoting in the thesis.
+
+issue_type: &issue_type
+  contrast_legibility: Text or icons hard to read - colour contrast, small or light text.
+  hierarchy_emphasis: Wrong visual weight - an important element is not prominent, or an unimportant one dominates.
+  layout_spacing: Alignment, margins, whitespace, balance, clipped or cut-off content.
+  affordance: Unclear whether or how an element is interactive, or what kind of control it is.
+  touch_target: Controls too small or too close together to tap reliably.
+  navigation: Missing or unclear way to move between screens (back, close, menu structure).
+  labeling_content: Wording, labels, terminology, icon meaning, copy errors.
+  feedback_state: System status and element state - selected, disabled, loading, errors, empty states.
+  consistency: The same kind of element is styled or worded differently within the screen.
+  missing_function: A control, option or piece of information the task needs is absent.
+  aesthetics: Overall visual appeal without a specific usability mechanism.
+  other: None of the above; say what in the note.
+
+matched:
+  unit: One pair the judge labelled `equivalent`.
+  question: Is the match real, and how deep and sound is the LLM's fix compared with the expert's?
+  fields:
+    match:
+      valid: Same problem on the same element.
+      partial: Overlapping but not the same - one comment is broader or covers only part of the other.
+      invalid: Different problem or different element; the label reflects surface similarity.
+    llm_fix:
+      generic: States a direction only ("increase contrast", "make it more visible").
+      concrete: Names the element and the specific change ("darken the section header text", "add a chevron to each row").
+      specified: Concrete plus a measurable target or ready-to-use content (a contrast ratio, a size in pt/dp, exact replacement copy).
+    expert_fix:
+      none: No fix given.
+      generic: Same scale as llm_fix.
+      concrete: Same scale as llm_fix.
+      specified: Same scale as llm_fix.
+    fix_sound:
+      sound: Would fix the problem without obvious side effects.
+      partly: Treats only part of the problem, or lists alternatives without committing to one.
+      unsound: Would not fix the problem, introduces a new one, or relies on content or behaviour not on the screen.
+    issue_type: *issue_type
+
+unmatched:
+  unit: One expert comment a model did not cover (best relation `related_but_different` or `no_match`), reviewed against all of that model's comments on the screen, across its tasks.
+  question: Why did the model miss it?
+  fields:
+    cause:  # first that applies
+      judge_miss: A comment on the same task covers it; the judge should have matched them.
+      other_task_match: A comment the model wrote for another task on the same screen covers it (pairs are only judged within a task).
+      expert_incorrect: The expert's claim is contradicted by the screenshot.
+      unverifiable: Cannot be checked against the screenshot - too vague or taste-based ("unappealing", "lacks balance"), or depends on interaction or flow the screenshot does not show.
+      same_problem_other_element: The model raised the same kind of problem, but on a different element.
+      clear_omission: Specific and visible on the screenshot, and no comment on the screen covers it.
+    issue_type: *issue_type
+
+unsupported:
+  unit: One LLM comment whose best relation to every expert comment on the screen-task is `no_match`; reviewed blind to the expert comments.
+  question: Is the unsupported comment a legitimate observation the expert did not make?
+  fields:
+    validity:  # first that applies
+      hallucination: Contradicted by the screenshot - the element, text, colour or state is not as described.
+      unverifiable: Cannot be checked against the screenshot - depends on behaviour, state or content it does not show, or the image is too unclear.
+      valid_generic: Accurate, but a checklist best practice that would fit most screens (required-field markers, filter/sort, labels on icons).
+      valid_specific: Accurate and specific to this screen.
+    issue_type: *issue_type
+
+contradiction:
+  unit: One pair the judge labelled `contradiction`.
+  question: Do the two comments really contradict each other?
+  fields:
+    label:
+      0: Not a contradiction.
+      1: Partial contradiction.
+      2: True contradiction.
