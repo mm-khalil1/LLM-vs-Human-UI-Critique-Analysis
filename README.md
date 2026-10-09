@@ -12,8 +12,9 @@ Python 3.12.
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 pip install --no-deps irrCAC==0.4.4   # its pins conflict with pandas 3; works fine without them
-cp .env.example .env                  # add API keys for the providers you run
 ```
+
+API keys are read from a `.env` file in the project root (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`); only the providers you run are needed.
 
 ## Data
 

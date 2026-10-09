@@ -18,7 +18,6 @@
 !LICENSE
 !requirements.txt
 !.gitignore
-!.env.example
 
 # 4. Never descend into these at all.
 #    (Listed last so they override rule 2. Also keeps `git status`

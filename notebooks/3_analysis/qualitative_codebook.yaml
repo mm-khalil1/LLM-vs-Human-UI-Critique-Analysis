@@ -22,6 +22,7 @@ issue_type: &issue_type
 matched:
   unit: One pair the judge labelled `equivalent`.
   question: Is the match real, and how deep and sound is the LLM's fix compared with the expert's?
+  # fix_sound is judged against the problem the two comments share; for an invalid match, against the LLM's own problem.
   fields:
     match:
       valid: Same problem on the same element.
@@ -30,15 +31,15 @@ matched:
     llm_fix:
       generic: States a direction only ("increase contrast", "make it more visible").
       concrete: Names the element and the specific change ("darken the section header text", "add a chevron to each row").
-      specified: Concrete plus a measurable target or ready-to-use content (a contrast ratio, a size in pt/dp, exact replacement copy).
+      specified: Concrete plus a measurable target or ready-to-use content (a contrast ratio, a size in pt/dp, a named standard level such as WCAG AA, exact replacement copy - also when given as "e.g.").
     expert_fix:
       none: No fix given.
       generic: Same scale as llm_fix.
       concrete: Same scale as llm_fix.
       specified: Same scale as llm_fix.
     fix_sound:
-      sound: Would fix the problem without obvious side effects.
-      partly: Treats only part of the problem, or lists alternatives without committing to one.
+      sound: Would fix the problem without obvious side effects; alternatives are fine if each would fix it.
+      partly: Treats only part of the problem, or at least one listed alternative would not fix it.
       unsound: Would not fix the problem, introduces a new one, or relies on content or behaviour not on the screen.
     issue_type: *issue_type
 
@@ -46,6 +47,8 @@ unmatched:
   unit: One expert comment a model did not cover (best relation `related_but_different` or `no_match`), reviewed against all of that model's comments on the screen, across its tasks.
   question: Why did the model miss it?
   fields:
+    # "Covers" = the same problem (same mechanism) on the same element; covering one part of a multi-part expert
+    # comment counts (the judge would call it human_broader). Same outcome by a different mechanism does not cover.
     cause:  # first that applies
       judge_miss: A comment on the same task covers it; the judge should have matched them.
       other_task_match: A comment the model wrote for another task on the same screen covers it (pairs are only judged within a task).
