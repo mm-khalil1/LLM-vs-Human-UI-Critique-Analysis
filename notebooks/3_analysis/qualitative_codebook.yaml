@@ -1,4 +1,4 @@
-# Codebook for the manual audits in 02_comment_matching_analysis.ipynb (section 4).
+# Codebook for the manual audits in 2_b_comment_matching_analysis.ipynb (section 4).
 #
 # Each section lists the fields coded for every sampled row and the allowed values of each field.
 # For fields marked "first that applies", go down the list and take the first value that fits.
@@ -63,7 +63,7 @@ unsupported:
   question: Is the unsupported comment a legitimate observation the expert did not make?
   fields:
     validity:  # first that applies
-      hallucination: Contradicted by the screenshot - the element, text, colour or state is not as described.
+      hallucination: The core claim is contradicted by the screenshot - the element, text, colour or state is not as described (exaggerated wording about something real is not a hallucination).
       unverifiable: Cannot be checked against the screenshot - depends on behaviour, state or content it does not show, or the image is too unclear.
       valid_generic: Accurate, but a checklist best practice that would fit most screens (required-field markers, filter/sort, labels on icons).
       valid_specific: Accurate and specific to this screen.

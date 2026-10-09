@@ -28,5 +28,15 @@
     "sample_per_model": 50,
     "seed": 42,
     "stratified_by": "app_category"
+  },
+  "contradiction": {
+    "population": {
+      "claude4_7": 44,
+      "gpt5": 46,
+      "gemini3_1pro": 18
+    },
+    "sample_per_model": 50,
+    "seed": 42,
+    "stratified_by": "app_category"
   }
 }
