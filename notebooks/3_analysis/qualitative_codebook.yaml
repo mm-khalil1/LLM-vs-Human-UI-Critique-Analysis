@@ -21,8 +21,8 @@ issue_type: &issue_type
 
 matched:
   unit: One pair the judge labelled `equivalent`.
-  question: Is the match real, and how deep and sound is the LLM's fix compared with the expert's?
-  # fix_sound is judged against the problem the two comments share; for an invalid match, against the LLM's own problem.
+  question: Is the match real, and how specific and sound is the LLM's fix on its own?
+  # fix_sound is judged against the problem the LLM comment describes.
   fields:
     match:
       valid: Same problem on the same element.
@@ -32,11 +32,6 @@ matched:
       generic: States a direction only ("increase contrast", "make it more visible").
       concrete: Names the element and the specific change ("darken the section header text", "add a chevron to each row").
       specified: Concrete plus a measurable target or ready-to-use content (a contrast ratio, a size in pt/dp, a named standard level such as WCAG AA, exact replacement copy - also when given as "e.g.").
-    expert_fix:
-      none: No fix given.
-      generic: Same scale as llm_fix.
-      concrete: Same scale as llm_fix.
-      specified: Same scale as llm_fix.
     fix_sound:
       sound: Would fix the problem without obvious side effects; alternatives are fine if each would fix it.
       partly: Treats only part of the problem, or at least one listed alternative would not fix it.
